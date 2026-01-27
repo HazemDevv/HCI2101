@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة XO - حازم الحربي</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Tajawal', sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        /* شاشة البداية */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 { color: #38bdf8; margin-bottom: 20px; font-size: 2.5rem; }
+        
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 10px;
+            border: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1rem;
+            box-sizing: border-box; 
+        }
+
+        input { background: rgba(255, 255, 255, 0.9); color: #333; }
+        
+        button {
+            background: #38bdf8;
+            color: #0f172a;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        button:hover { background: #0ea5e9; transform: scale(1.02); }
+
+        /* شاشة اللعبة */
+        #game-screen { display: none; }
+        
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .cell {
+            background: rgba(255, 255, 255, 0.1);
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+            border: 2px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .cell:hover { background: rgba(255, 255, 255, 0.2); }
+        .cell.x { color: #38bdf8; text-shadow: 0 0 10px #38bdf8; }
+        .cell.o { color: #f472b6; text-shadow: 0 0 10px #f472b6; }
+
+        .status { font-size: 1.2rem; margin-bottom: 15px; color: #cbd5e1; }
+
+        /* التذييل الإجباري */
+        footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.8rem;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+        footer strong { color: #fff; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="start-screen" class="glass-panel">
+            <h1>لعبة XO</h1>
+            <input type="text" id="player1" placeholder="اسم اللاعب الأول (X)">
+            <input type="text" id="player2" placeholder="اسم اللاعب الثاني (O)">
+            
+            <select id="mode">
+                <option value="pvp">لاعب ضد لاعب</option>
+                <option value="pvc">لاعب ضد الكمبيوتر</option>
+            </select>
+
+            <button onclick="startGame()">ابدأ اللعب 🎮</button>
+            
+            <footer>
+                <strong>الطالب:</strong> حازم محمد بن صلاح الحربي (HAZIM MOHAMMAD SALAH ALHARBI)<br>
+                <strong>الرقم الجامعي:</strong> 446003151<br>
+                <strong>بإشراف:</strong> أ. محمد أحمد جبلي
+            </footer>
+        </div>
+
+        <div id="game-screen" class="glass-panel">
+            <div class="status" id="status">دور اللاعب: X</div>
+            <div class="board" id="board">
+                <div class="cell" onclick="makeMove(0)"></div>
+                <div class="cell" onclick="makeMove(1)"></div>
+                <div class="cell" onclick="makeMove(2)"></div>
+                <div class="cell" onclick="makeMove(3)"></div>
+                <div class="cell" onclick="makeMove(4)"></div>
+                <div class="cell" onclick="makeMove(5)"></div>
+                <div class="cell" onclick="makeMove(6)"></div>
+                <div class="cell" onclick="makeMove(7)"></div>
+                <div class="cell" onclick="makeMove(8)"></div>
+            </div>
+            <button onclick="resetGame()">لعبة جديدة 🔄</button>
+            
+            <footer>
+                <strong>الطالب:</strong> حازم محمد بن صلاح الحربي<br>
+                <strong>ID:</strong> 446003151
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let gameState = ["", "", "", "", "", "", "", "", ""];
+        let p1Name = "اللاعب 1";
+        let p2Name = "اللاعب 2";
+        let isPvC = false;
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function startGame() {
+            const p1Input = document.getElementById('player1').value;
+            const p2Input = document.getElementById('player2').value;
+            const mode = document.getElementById('mode').value;
+
+            if(p1Input) p1Name = p1Input;
+            if(p2Input) p2Name = p2Input;
+            if(mode === 'pvc') {
+                isPvC = true;
+                p2Name = "الكمبيوتر 🤖";
+            }
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            updateStatus();
+        }
+
+        function updateStatus() {
+            const name = currentPlayer === 'X' ? p1Name : p2Name;
+            document.getElementById('status').innerText = `الدور على: ${name} (${currentPlayer})`;
+        }
+
+        function makeMove(index) {
+            if (gameState[index] !== "" || !gameActive) return;
+
+            gameState[index] = currentPlayer;
+            const cell = document.getElementsByClassName('cell')[index];
+            cell.innerText = currentPlayer;
+            cell.classList.add(currentPlayer.toLowerCase());
+
+            if (checkWin()) {
+                const winnerName = currentPlayer === 'X' ? p1Name : p2Name;
+                document.getElementById('status').innerText = `🎉 الفائز هو: ${winnerName}!`;
+                gameActive = false;
+                return;
+            }
+
+            if (!gameState.includes("")) {
+                document.getElementById('status').innerText = "تعادل! 🤝";
+                gameActive = false;
+                return;
+            }
+
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateStatus();
+
+            if (isPvC && currentPlayer === 'O' && gameActive) {
+                setTimeout(computerMove, 500);
+            }
+        }
+
+        function computerMove() {
+            let available = gameState.map((val, idx) => val === "" ? idx : null).filter(val => val !== null);
+            let randomMove = available[Math.floor(Math.random() * available.length)];
+            makeMove(randomMove);
+        }
+
+        function checkWin() {
+            for (let i = 0; i < winningConditions.length; i++) {
+                const [a, b, c] = winningConditions[i];
+                if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function resetGame() {
+            currentPlayer = 'X';
+            gameActive = true;
+            gameState = ["", "", "", "", "", "", "", "", ""];
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.innerText = "";
+                cell.classList.remove('x', 'o');
+            });
+            document.getElementById('start-screen').style.display = 'block';
+            document.getElementById('game-screen').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
